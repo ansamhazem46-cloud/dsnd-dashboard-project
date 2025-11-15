@@ -1,50 +1,30 @@
-# Import any dependencies needed to execute sql queries
-# YOUR CODE HERE
+# python-package/employee_events/query_base.py
 
-# Define a class called QueryBase
-# Use inheritance to add methods
-# for querying the employee_events database.
-# YOUR CODE HERE
+import sqlite3
+import os
 
-    # Create a class attribute called `name`
-    # set the attribute to an empty string
-    # YOUR CODE HERE
+DB_PATH = os.path.join(os.path.dirname(__file__), 'employee_events.db')
 
-    # Define a `names` method that receives
-    # no passed arguments
-    # YOUR CODE HERE
+class QueryBase:
+    """Base class for constructing and executing queries against the employee_events DB."""
+
+    def __init__(self):
+        self.conn = sqlite3.connect(DB_PATH)
+        self.conn.row_factory = sqlite3.Row
+
+    def execute(self, sql: str, params: tuple = ()):
+        """
+        Execute a SQL statement and return raw rows.
         
-        # Return an empty list
-        # YOUR CODE HERE
+        :param sql: SQL query string
+        :param params: tuple of parameters
+        :return: list of sqlite3.Row
+        """
+        cur = self.conn.cursor()
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+        return rows
 
-
-    # Define an `event_counts` method
-    # that receives an `id` argument
-    # This method should return a pandas dataframe
-    # YOUR CODE HERE
-
-        # QUERY 1
-        # Write an SQL query that groups by `event_date`
-        # and sums the number of positive and negative events
-        # Use f-string formatting to set the FROM {table}
-        # to the `name` class attribute
-        # Use f-string formatting to set the name
-        # of id columns used for joining
-        # order by the event_date column
-        # YOUR CODE HERE
-            
-    
-
-    # Define a `notes` method that receives an id argument
-    # This function should return a pandas dataframe
-    # YOUR CODE HERE
-
-        # QUERY 2
-        # Write an SQL query that returns `note_date`, and `note`
-        # from the `notes` table
-        # Set the joined table names and id columns
-        # with f-string formatting
-        # so the query returns the notes
-        # for the table name in the `name` class attribute
-        # YOUR CODE HERE
-
+    def close(self):
+        """Close the DB connection."""
+        self.conn.close()
