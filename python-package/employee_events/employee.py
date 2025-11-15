@@ -1,24 +1,23 @@
 # python-package/employee_events/employee.py
 
 import pandas as pd
-import sqlite3
-import os
-
-DB_PATH = os.path.join(os.path.dirname(__file__), 'employee_events.db')
+from .sql_execution import SqlExecution
 
 class Employee:
-    """Handles employee-level data and metrics."""
+    """Handles employee-level data and metrics using SqlExecution."""
 
     def __init__(self):
-        self.conn = sqlite3.connect(DB_PATH)
+        self.sql_exec = SqlExecution()
         self.df = self.load_data()
 
     def load_data(self):
-        df = pd.read_sql_query("SELECT * FROM employee_events", self.conn)
-        df['event_date'] = pd.to_datetime(df['event_date'])
-        df['employee_id'] = df['employee_id'].astype(str)
-        df['team'] = df['team'].fillna('Unknown')
-        df['event_type'] = df['event_type'].fillna('Unknown')
+        """Load all employee events from the database."""
+        df = self.sql_exec.fetch_all_events()
+        if not df.empty:
+            df['event_date'] = pd.to_datetime(df['event_date'])
+            df['employee_id'] = df['employee_id'].astype(str)
+            df['team'] = df['team'].fillna('Unknown')
+            df['event_type'] = df['event_type'].fillna('Unknown')
         return df
 
     def filter_data(self, start_date=None, end_date=None, event_types=None, teams=None):
@@ -57,4 +56,4 @@ class Employee:
         return trend.reset_index().rename(columns={'event_date': 'date', 0: 'event_count'})
 
     def close_connection(self):
-        self.conn.close()
+        self.sql_exec.close_connection()
