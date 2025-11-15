@@ -62,4 +62,18 @@ class Team:
         if end_date:
             filtered = filtered[filtered['event_date'] <= pd.to_datetime(end_date)]
         if teams:
-            filtered = filtered[filtered['team']()]()
+            filtered = filtered[filtered['team'].isin(teams)]
+        if event_types:
+            filtered = filtered[filtered['event_type'].isin(event_types)]
+        return filtered
+
+    def close_connection(self):
+        """Close the database connection."""
+        self.conn.close()
+
+
+# Example usage:
+# team = Team()
+# print(team.total_teams())
+# print(team.most_active_team())
+# team.close_connection()
