@@ -1,46 +1,53 @@
-from sqlite3 import connect
-from pathlib import Path
-from functools import wraps
+# python-package/employee_events/sql_execution.py
+
+import sqlite3
 import pandas as pd
+import os
 
-# Using pathlib, create a `db_path` variable
-# that points to the absolute path for the `employee_events.db` file
-#### YOUR CODE HERE
+DB_PATH = os.path.join(os.path.dirname(__file__), 'employee_events.db')
 
 
-# OPTION 1: MIXIN
-# Define a class called `QueryMixin`
-class QueryMixin:
-    
-    # Define a method named `pandas_query`
-    # that receives an sql query as a string
-    # and returns the query's result
-    # as a pandas dataframe
-    #### YOUR CODE HERE
+class SqlExecution:
+    """Helper class to execute SQL queries on the employee_events database."""
 
-    # Define a method named `query`
-    # that receives an sql_query as a string
-    # and returns the query's result as
-    # a list of tuples. (You will need
-    # to use an sqlite3 cursor)
-    #### YOUR CODE HERE
-    
+    def __init__(self):
+        self.conn = sqlite3.connect(DB_PATH)
 
- 
- # Leave this code unchanged
-def query(func):
-    """
-    Decorator that runs a standard sql execution
-    and returns a list of tuples
-    """
+    def execute_query(self, query, params=None):
+        """
+        Execute a SQL query and return a Pandas DataFrame.
+        :param query: SQL query string
+        :param params: Optional parameters for query
+        :return: Pandas DataFrame
+        """
+        if params is None:
+            params = {}
 
-    @wraps(func)
-    def run_query(*args, **kwargs):
-        query_string = func(*args, **kwargs)
-        connection = connect(db_path)
-        cursor = connection.cursor()
-        result = cursor.execute(query_string).fetchall()
-        connection.close()
-        return result
-    
-    return run_query
+        df = pd.read_sql_query(query, self.conn, params=params)
+        return df
+
+    def get_all_employees(self):
+        """Return all employee data as DataFrame."""
+        query = "SELECT * FROM employee_events"
+        return self.execute_query(query)
+
+    def get_events_by_employee(self, employee_id):
+        """Return all events for a specific employee."""
+        query = "SELECT * FROM employee_events WHERE employee_id = ?"
+        return self.execute_query(query, params=(employee_id,))
+
+    def get_events_by_team(self, team):
+        """Return all events for a specific team."""
+        query = "SELECT * FROM employee_events WHERE team = ?"
+        return self.execute_query(query, params=(team,))
+
+    def close_connection(self):
+        """Close the database connection."""
+        self.conn.close()
+
+
+# Example usage:
+# sql_exec = SqlExecution()
+# df_all = sql_exec.get_all_employees()
+# df_team = sql_exec.get_events_by_team("Engineering")
+# sql_exec.close_connection()
