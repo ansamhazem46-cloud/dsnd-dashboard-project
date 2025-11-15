@@ -1,65 +1,32 @@
-# Import the QueryBase class
-#### YOUR CODE HERE
+# python-package/employee_events/employee.py
 
-# Import dependencies needed for sql execution
-# from the `sql_execution` module
-#### YOUR CODE HERE
+import pandas as pd
+import sqlite3
+import os
 
-# Define a subclass of QueryBase
-# called Employee
-#### YOUR CODE HERE
-
-    # Set the class attribute `name`
-    # to the string "employee"
-    #### YOUR CODE HERE
+# Path to database
+DB_PATH = os.path.join(os.path.dirname(__file__), 'employee_events.db')
 
 
-    # Define a method called `names`
-    # that receives no arguments
-    # This method should return a list of tuples
-    # from an sql execution
-    #### YOUR CODE HERE
-        
-        # Query 3
-        # Write an SQL query
-        # that selects two columns 
-        # 1. The employee's full name
-        # 2. The employee's id
-        # This query should return the data
-        # for all employees in the database
-        #### YOUR CODE HERE
-    
+class Employee:
+    """Class to handle employee-level queries and metrics."""
 
-    # Define a method called `username`
-    # that receives an `id` argument
-    # This method should return a list of tuples
-    # from an sql execution
-    #### YOUR CODE HERE
-        
-        # Query 4
-        # Write an SQL query
-        # that selects an employees full name
-        # Use f-string formatting and a WHERE filter
-        # to only return the full name of the employee
-        # with an id equal to the id argument
-        #### YOUR CODE HERE
+    def __init__(self):
+        self.conn = sqlite3.connect(DB_PATH)
+        self.df = self.load_data()
 
+    def load_data(self):
+        """Load employee events data from the database and clean it."""
+        query = "SELECT * FROM employee_events"
+        df = pd.read_sql_query(query, self.conn)
 
-    # Below is method with an SQL query
-    # This SQL query generates the data needed for
-    # the machine learning model.
-    # Without editing the query, alter this method
-    # so when it is called, a pandas dataframe
-    # is returns containing the execution of
-    # the sql query
-    #### YOUR CODE HERE
-    def model_data(self, id):
+        # Clean and process data
+        df['event_date'] = pd.to_datetime(df['event_date'])
+        df['employee_id'] = df['employee_id'].astype(str)
+        df['team'] = df['team'].fillna('Unknown')
+        df['event_type'] = df['event_type'].fillna('Unknown')
 
-        return f"""
-                    SELECT SUM(positive_events) positive_events
-                         , SUM(negative_events) negative_events
-                    FROM {self.name}
-                    JOIN employee_events
-                        USING({self.name}_id)
-                    WHERE {self.name}.{self.name}_id = {id}
-                """
+        return df
+
+    def total_employees(self):
+        """Return total numb
