@@ -1,24 +1,23 @@
 # python-package/employee_events/team.py
 
 import pandas as pd
-import sqlite3
-import os
-
-DB_PATH = os.path.join(os.path.dirname(__file__), 'employee_events.db')
+from .sql_execution import SqlExecution
 
 class Team:
-    """Handles team-level data and metrics."""
+    """Handles team-level data and metrics using SqlExecution."""
 
     def __init__(self):
-        self.conn = sqlite3.connect(DB_PATH)
+        self.sql_exec = SqlExecution()
         self.df = self.load_data()
 
     def load_data(self):
-        df = pd.read_sql_query("SELECT * FROM employee_events", self.conn)
-        df['event_date'] = pd.to_datetime(df['event_date'])
-        df['team'] = df['team'].fillna('Unknown')
-        df['event_type'] = df['event_type'].fillna('Unknown')
-        df['employee_id'] = df['employee_id'].astype(str)
+        """Load all employee events from the database."""
+        df = self.sql_exec.fetch_all_events()
+        if not df.empty:
+            df['event_date'] = pd.to_datetime(df['event_date'])
+            df['team'] = df['team'].fillna('Unknown')
+            df['event_type'] = df['event_type'].fillna('Unknown')
+            df['employee_id'] = df['employee_id'].astype(str)
         return df
 
     def filter_data(self, start_date=None, end_date=None, teams=None, event_types=None):
@@ -39,20 +38,17 @@ class Team:
 
     def total_events_by_team(self, df=None):
         df = df if df is not None else self.df
-        team_counts = df.groupby('team').size().reset_index(name='event_count')
-        return team_counts
+        return df.groupby('team').size().reset_index(name='event_count')
 
     def most_active_team(self, df=None):
         df = df if df is not None else self.df
-        team_counts = self.total_events_by_team(df)
-        top = team_counts.sort_values(by='event_count', ascending=False).iloc[0]
-        return top['team'], top['event_count']
+        top_team = self.total_events_by_team(df).sort_values(by='event_count', ascending=False).iloc[0]
+        return top_team['team'], top_team['event_count']
 
     def events_by_team_over_time(self, df=None, freq='M'):
         df = df if df is not None else self.df
         trend = df.set_index('event_date').groupby(['team', pd.Grouper(freq=freq)]).size()
-        trend_df = trend.reset_index().rename(columns={0: 'event_count'})
-        return trend_df
+        return trend.reset_index().rename(columns={0: 'event_count'})
 
     def close_connection(self):
-        self.conn.close()
+        self.sql_exec.close_connection()
