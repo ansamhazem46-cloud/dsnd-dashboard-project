@@ -1,66 +1,65 @@
-# Import the QueryBase class
-# YOUR CODE HERE
+# python-package/employee_events/team.py
 
-# Import dependencies for sql execution
-#### YOUR CODE HERE
+import pandas as pd
+import sqlite3
+import os
 
-# Create a subclass of QueryBase
-# called  `Team`
-#### YOUR CODE HERE
-
-    # Set the class attribute `name`
-    # to the string "team"
-    #### YOUR CODE HERE
+# Path to database
+DB_PATH = os.path.join(os.path.dirname(__file__), 'employee_events.db')
 
 
-    # Define a `names` method
-    # that receives no arguments
-    # This method should return
-    # a list of tuples from an sql execution
-    #### YOUR CODE HERE
-        
-        # Query 5
-        # Write an SQL query that selects
-        # the team_name and team_id columns
-        # from the team table for all teams
-        # in the database
-        #### YOUR CODE HERE
-    
+class Team:
+    """Class to handle team-level queries and metrics."""
 
-    # Define a `username` method
-    # that receives an ID argument
-    # This method should return
-    # a list of tuples from an sql execution
-    #### YOUR CODE HERE
+    def __init__(self):
+        self.conn = sqlite3.connect(DB_PATH)
+        self.df = self.load_data()
 
-        # Query 6
-        # Write an SQL query
-        # that selects the team_name column
-        # Use f-string formatting and a WHERE filter
-        # to only return the team name related to
-        # the ID argument
-        #### YOUR CODE HERE
+    def load_data(self):
+        """Load employee events data and clean it."""
+        query = "SELECT * FROM employee_events"
+        df = pd.read_sql_query(query, self.conn)
 
+        # Clean data
+        df['event_date'] = pd.to_datetime(df['event_date'])
+        df['team'] = df['team'].fillna('Unknown')
+        df['event_type'] = df['event_type'].fillna('Unknown')
+        df['employee_id'] = df['employee_id'].astype(str)
 
-    # Below is method with an SQL query
-    # This SQL query generates the data needed for
-    # the machine learning model.
-    # Without editing the query, alter this method
-    # so when it is called, a pandas dataframe
-    # is returns containing the execution of
-    # the sql query
-    #### YOUR CODE HERE
-    def model_data(self, id):
+        return df
 
-        return f"""
-            SELECT positive_events, negative_events FROM (
-                    SELECT employee_id
-                         , SUM(positive_events) positive_events
-                         , SUM(negative_events) negative_events
-                    FROM {self.name}
-                    JOIN employee_events
-                        USING({self.name}_id)
-                    WHERE {self.name}.{self.name}_id = {id}
-                    GROUP BY employee_id
-                   )
-                """
+    def total_teams(self):
+        """Return total number of unique teams."""
+        return self.df['team'].nunique()
+
+    def total_events_by_team(self):
+        """Return total number of events per team."""
+        team_counts = self.df.groupby('team').size().reset_index()
+        team_counts.columns = ['team', 'event_count']
+        return team_counts
+
+    def most_active_team(self):
+        """Return the team with the most events and the count."""
+        team_counts = self.total_events_by_team()
+        top_team = team_counts.sort_values(by='event_count', ascending=False).iloc[0]
+        return top_team['team'], top_team['event_count']
+
+    def events_by_team_over_time(self, freq='M'):
+        """
+        Return event counts per team over time.
+        freq: 'D' (day), 'M' (month), 'Y' (year)
+        """
+        df_grouped = self.df.set_index('event_date').groupby(['team', pd.Grouper(freq=freq)]).size()
+        df_grouped = df_grouped.reset_index()
+        df_grouped.columns = ['team', 'date', 'event_count']
+        return df_grouped
+
+    def filter_data(self, start_date=None, end_date=None, teams=None, event_types=None):
+        """Filter data based on dates, teams, and event types."""
+        filtered = self.df.copy()
+        if start_date:
+            filtered = filtered[filtered['event_date'] >= pd.to_datetime(start_date)]
+        if end_date:
+            filtered = filtered[filtered['event_date'] <= pd.to_datetime(end_date)]
+        if teams:
+            filtered = filtered[filtered['team']()]()
